@@ -1,3 +1,7 @@
+# eval "$(pyenv init -)"
+#pyenv local dlbasics 
+# pyenv local dlbasics
+
 import os, sys
 import numpy as np
 import torch
@@ -47,6 +51,8 @@ def run(args: DictConfig):
     #     Optimizer
     # ------------------
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+
 
     # ------------------
     #   Start training
@@ -64,8 +70,9 @@ def run(args: DictConfig):
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to(args.device), y.to(args.device)
+            subject_idxs = subject_idxs.to(args.device)
 
-            y_pred = model(X)
+            y_pred = model(X, subject_idxs)
             
             loss = F.cross_entropy(y_pred, y)
             train_loss.append(loss.item())
@@ -77,10 +84,13 @@ def run(args: DictConfig):
             acc = accuracy(y_pred, y)
             train_acc.append(acc.item())
 
+        scheduler.step()
         model.eval()
+
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
             X, y = X.to(args.device), y.to(args.device)
-            
+            subject_idxs = subject_idxs.to(args.device)
+
             with torch.no_grad():
                 y_pred = model(X)
             
@@ -90,7 +100,13 @@ def run(args: DictConfig):
         print(f"Epoch {epoch+1}/{args.epochs} | train loss: {np.mean(train_loss):.3f} | train acc: {np.mean(train_acc):.3f} | val loss: {np.mean(val_loss):.3f} | val acc: {np.mean(val_acc):.3f}")
         torch.save(model.state_dict(), os.path.join(logdir, "model_last.pt"))
         if args.use_wandb:
-            wandb.log({"train_loss": np.mean(train_loss), "train_acc": np.mean(train_acc), "val_loss": np.mean(val_loss), "val_acc": np.mean(val_acc)})
+            wandb.log({
+                "train_loss": np.mean(train_loss), 
+                "train_acc": np.mean(train_acc), 
+                "val_loss": np.mean(val_loss), 
+                "val_acc": np.mean(val_acc),
+                "learning_rate": scheduler.get_last_lr()[0],
+            })
         
         if np.mean(val_acc) > max_val_acc:
             cprint("New best.", "cyan")
@@ -106,7 +122,10 @@ def run(args: DictConfig):
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+        X = X.to(args.device)
+        subject_idxs = subject_idxs.to(args.device)
+        with torch.no_grad():
+            preds.append(model(X, subject_idxs).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)
