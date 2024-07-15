@@ -10,13 +10,17 @@ class BasicConvClassifier(nn.Module):
         num_classes: int,
         seq_len: int,
         in_channels: int,
-        hid_dim: int = 128
+        hid_dim: int = 256
     ) -> None:
         super().__init__()
 
         self.blocks = nn.Sequential(
             ConvBlock(in_channels, hid_dim),
-            ConvBlock(hid_dim, hid_dim),
+            ConvBlock(hid_dim, hid_dim * 2),  # 新しい層を追加
+            ConvBlock(hid_dim * 2, hid_dim * 4),  # 新しい層を追加
+            # ConvBlock(hid_dim * 4, hid_dim * 4),  # 新しい層を追加
+            ConvBlock(hid_dim * 4, hid_dim * 2),  # 新しい層を追加
+            ConvBlock(hid_dim * 2, hid_dim)  # 新しい層を追加
         )
 
         self.head = nn.Sequential(
@@ -43,7 +47,7 @@ class ConvBlock(nn.Module):
         in_dim,
         out_dim,
         kernel_size: int = 3,
-        p_drop: float = 0.1,
+        p_drop: float = 0.3,
     ) -> None:
         super().__init__()
         
@@ -65,10 +69,10 @@ class ConvBlock(nn.Module):
         else:
             X = self.conv0(X)
 
-        X = F.gelu(self.batchnorm0(X))
+        X = F.relu(self.batchnorm0(X))
 
         X = self.conv1(X) + X  # skip connection
-        X = F.gelu(self.batchnorm1(X))
+        X = F.relu(self.batchnorm1(X))
 
         # X = self.conv2(X)
         # X = F.glu(X, dim=-2)
