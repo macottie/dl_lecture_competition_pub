@@ -41,12 +41,6 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         b, a = butter(self.order, [low, high], btype='band')
         return b, a
 
-    # def apply_filter(self, data):
-    #     data = np.copy(data)  # 負のストライドを回避するためにコピー
-    #     if data.ndim != 2 or data.shape[0] <= 1 or data.shape[1] <= 1:
-    #         raise ValueError(f"Invalid data shape for filtering: {data.shape}")
-    
-    #     return filtfilt(self.b, self.a, data, axis=1)        
 
     def resample(self, data):
         data = np.copy(data)  # 負のストライドを回避するためにコピー
@@ -80,15 +74,6 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         else:
             subject_idx = self.subject_idxs[idx]
             return X_corrected, subject_idx
-    
-    def __len__(self) -> int:
-        return len(self.X)
-
-    # def __getitem__(self, i):
-    #     if hasattr(self, "y"):
-    #         return self.X[i], self.y[i], self.subject_idxs[i]
-    #     else:
-    #         return self.X[i], self.subject_idxs[i]
 
     @property
     def num_channels(self) -> int:

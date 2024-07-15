@@ -18,7 +18,6 @@ class BasicConvClassifier(nn.Module):
             ConvBlock(in_channels, hid_dim),
             ConvBlock(hid_dim, hid_dim * 2),  # 新しい層を追加
             ConvBlock(hid_dim * 2, hid_dim * 4),  # 新しい層を追加
-            # ConvBlock(hid_dim * 4, hid_dim * 4),  # 新しい層を追加
             ConvBlock(hid_dim * 4, hid_dim * 2),  # 新しい層を追加
             ConvBlock(hid_dim * 2, hid_dim)  # 新しい層を追加
         )
@@ -56,8 +55,7 @@ class ConvBlock(nn.Module):
 
         self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
         self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
-        # self.conv2 = nn.Conv1d(out_dim, out_dim, kernel_size) # , padding="same")
-        
+
         self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
         self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
 
@@ -73,8 +71,5 @@ class ConvBlock(nn.Module):
 
         X = self.conv1(X) + X  # skip connection
         X = F.relu(self.batchnorm1(X))
-
-        # X = self.conv2(X)
-        # X = F.glu(X, dim=-2)
 
         return self.dropout(X)
